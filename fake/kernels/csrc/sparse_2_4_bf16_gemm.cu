@@ -86,8 +86,9 @@ torch::Tensor sparse24_gemm_bf16(
 
     cutlass::gemm::GemmCoord problem_size{(int)m, (int)n, (int)k};
 
-    // CUTLASS SparseGemm::Arguments order: problem_size, ref_A, ref_B, ref_C, ref_D, ref_E (metadata), epilogue, split_k
-    typename Gemm::Arguments args{
+    // CUTLASS SparseGemm::Arguments constructor signature:
+    // Arguments(problem_size, ref_A, ref_B, ref_C, ref_D, ref_E, epilogue_params, split_k_slices)
+    typename Gemm::Arguments args(
         problem_size,
         {reinterpret_cast<ElementA const*>(a.data_ptr<at::BFloat16>()), (int)k},
         {reinterpret_cast<ElementB const*>(b_compressed.data_ptr<at::BFloat16>()), (int)(k / kSparse)},
@@ -96,8 +97,8 @@ torch::Tensor sparse24_gemm_bf16(
         {reinterpret_cast<ElementMeta const*>(b_meta.data_ptr<uint16_t>()),
          (int)(k / kSparse / kElementsPerElementE)},
         {1.0f, 0.0f},
-        1,
-    };
+        1
+    );
 
     Gemm gemm;
     size_t workspace_size = Gemm::get_workspace_size(args);

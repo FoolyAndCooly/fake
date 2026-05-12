@@ -110,9 +110,9 @@ torch::Tensor nvfp4_gemm(
         cutlass::gemm::GemmUniversalMode::kGemm,
         {int(m), int(n), int(k), 1},
         {
-            reinterpret_cast<uint8_t const*>(a_packed.data_ptr<uint8_t>()),
+            reinterpret_cast<ElementA const*>(a_packed.data_ptr<uint8_t>()),
             stride_a,
-            reinterpret_cast<uint8_t const*>(b_packed.data_ptr<uint8_t>()),
+            reinterpret_cast<ElementB const*>(b_packed.data_ptr<uint8_t>()),
             stride_b,
             reinterpret_cast<cutlass::float_ue4m3_t const*>(a_scales.data_ptr<uint8_t>()),
             reinterpret_cast<cutlass::float_ue4m3_t const*>(b_scales.data_ptr<uint8_t>()),
