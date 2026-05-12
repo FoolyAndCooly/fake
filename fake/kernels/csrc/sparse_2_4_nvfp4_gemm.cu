@@ -38,9 +38,9 @@ constexpr int AlignmentD = 8;
 using ArchTag = cutlass::arch::Sm120;
 using OpClass = cutlass::arch::OpClassBlockScaledSparseTensorOp;
 
-// Use CUTLASS 2.x style GemmShape (same as dense nvfp4_gemm.cu)
-using TileShape    = cutlass::gemm::GemmShape<128, 128, 256>;  // K tile larger for sparse
-using ClusterShape = cutlass::gemm::GemmShape<1, 1, 1>;
+// Use CuTe Shape for CUTLASS 3.x (same as dense nvfp4_gemm.cu)
+using TileShape    = cute::Shape<cute::_128, cute::_128, cute::_256>;  // K tile larger for sparse
+using ClusterShape = cute::Shape<cute::_1, cute::_1, cute::_1>;
 
 using CollectiveEpilogue = typename cutlass::epilogue::collective::CollectiveBuilder<
     ArchTag, OpClass,
@@ -104,9 +104,9 @@ torch::Tensor sparse24_nvfp4_gemm(
         cutlass::gemm::GemmUniversalMode::kGemm,
         {int(m), int(n), int(k), 1},
         {
-            reinterpret_cast<typename ElementA::PackedElement const*>(a_packed.data_ptr<uint8_t>()),
+            reinterpret_cast<uint8_t const*>(a_packed.data_ptr<uint8_t>()),
             stride_a,
-            reinterpret_cast<typename ElementB::PackedElement const*>(b_packed_compressed.data_ptr<uint8_t>()),
+            reinterpret_cast<uint8_t const*>(b_packed_compressed.data_ptr<uint8_t>()),
             stride_b,
             reinterpret_cast<cutlass::float_ue4m3_t const*>(a_scales.data_ptr<uint8_t>()),
             reinterpret_cast<cutlass::float_ue4m3_t const*>(b_scales.data_ptr<uint8_t>()),
