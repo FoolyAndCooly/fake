@@ -19,8 +19,10 @@
 #include "cutlass/gemm/kernel/gemm_universal.hpp"
 #include "cutlass/util/packed_stride.hpp"
 
-using ElementA           = cutlass::nv_float4_t<cutlass::float_ue4m3_t>;
-using ElementB           = cutlass::nv_float4_t<cutlass::float_ue4m3_t>;
+// For sparse block-scaled tensor op, use float_e2m1_t as the base type
+// The ue4m3 scales are specified separately in the mainloop arguments
+using ElementA           = cutlass::nv_float4_t<cutlass::float_e2m1_t>;
+using ElementB           = cutlass::nv_float4_t<cutlass::float_e2m1_t>;
 using ElementC           = void;
 using ElementD           = cutlass::bfloat16_t;
 using ElementAccumulator = float;
@@ -36,6 +38,7 @@ constexpr int AlignmentD = 8;
 using ArchTag = cutlass::arch::Sm120;
 using OpClass = cutlass::arch::OpClassBlockScaledSparseTensorOp;
 
+// Use CUTLASS 2.x style GemmShape (same as dense nvfp4_gemm.cu)
 using TileShape    = cutlass::gemm::GemmShape<128, 128, 256>;  // K tile larger for sparse
 using ClusterShape = cutlass::gemm::GemmShape<1, 1, 1>;
 
@@ -57,7 +60,7 @@ using CollectiveMainloop = typename cutlass::gemm::collective::CollectiveBuilder
     TileShape, ClusterShape,
     cutlass::gemm::collective::StageCountAutoCarveout<
         static_cast<int>(sizeof(typename CollectiveEpilogue::SharedStorage))>,
-    cutlass::gemm::KernelTmaWarpSpecializedSparseCooperative
+    cutlass::gemm::KernelTmaWarpSpecializedCooperative
 >::CollectiveOp;
 
 using GemmKernel = cutlass::gemm::kernel::GemmUniversal<

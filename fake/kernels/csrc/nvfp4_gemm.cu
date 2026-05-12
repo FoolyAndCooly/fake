@@ -25,9 +25,9 @@
 #include "cutlass/gemm/kernel/gemm_universal.hpp"
 #include "cutlass/util/packed_stride.hpp"
 
-// NVFP4 data types on CUTLASS side.
-using ElementA           = cutlass::nv_float4_t<cutlass::float_ue4m3_t>;
-using ElementB           = cutlass::nv_float4_t<cutlass::float_ue4m3_t>;
+// NVFP4 data types: e2m1 for the FP4 data itself, ue4m3 scales passed separately
+using ElementA           = cutlass::nv_float4_t<cutlass::float_e2m1_t>;
+using ElementB           = cutlass::nv_float4_t<cutlass::float_e2m1_t>;
 using ElementC           = void;
 using ElementD           = cutlass::bfloat16_t;
 using ElementAccumulator = float;
