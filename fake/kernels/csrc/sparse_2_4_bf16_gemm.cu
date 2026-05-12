@@ -86,16 +86,15 @@ torch::Tensor sparse24_gemm_bf16(
 
     cutlass::gemm::GemmCoord problem_size{(int)m, (int)n, (int)k};
 
-    // CUTLASS SparseGemm::Arguments order: problem_size, ref_A, ref_B, ref_E (metadata), ref_C, ref_D, epilogue, split_k
-    // ld(A)=K, ld(B)=K/kSparse, ld(E)=K/kSparse/kElementsPerElementE, ld(C)=ld(D)=N for TN layout.
+    // CUTLASS SparseGemm::Arguments order: problem_size, ref_A, ref_B, ref_C, ref_D, ref_E (metadata), epilogue, split_k
     typename Gemm::Arguments args{
         problem_size,
         {reinterpret_cast<ElementA const*>(a.data_ptr<at::BFloat16>()), (int)k},
         {reinterpret_cast<ElementB const*>(b_compressed.data_ptr<at::BFloat16>()), (int)(k / kSparse)},
+        {reinterpret_cast<ElementC const*>(d.data_ptr<at::BFloat16>()), (int)n},
+        {d.data_ptr<at::BFloat16>(), (int)n},
         {reinterpret_cast<ElementMeta const*>(b_meta.data_ptr<uint16_t>()),
          (int)(k / kSparse / kElementsPerElementE)},
-        {d.data_ptr<at::BFloat16>(), (int)n},
-        {d.data_ptr<at::BFloat16>(), (int)n},
         {1.0f, 0.0f},
         1,
     };
@@ -197,10 +196,11 @@ std::tuple<torch::Tensor, torch::Tensor> compress_2_4_bf16(torch::Tensor dense_w
     }
 
     // Step 2: reorder metadata into the layout consumed by the SparseGemm kernel.
+    // reorder_meta expects the problem_size of the metadata tensor as {rows, cols, 1}
     cutlass::reorder_meta(
         meta_reordered_h.host_ref(),
         meta_h.host_ref(),
-        {n, k / kSparse / kElementsPerElementE}
+        cutlass::gemm::GemmCoord(n, k / kSparse / kElementsPerElementE, 1)
     );
 
     // Step 3: copy results back to GPU tensors.
