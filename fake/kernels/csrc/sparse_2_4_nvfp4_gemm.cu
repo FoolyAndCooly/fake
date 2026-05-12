@@ -38,9 +38,9 @@ constexpr int AlignmentD = 8;
 using ArchTag = cutlass::arch::Sm120;
 using OpClass = cutlass::arch::OpClassBlockScaledSparseTensorOp;
 
-// Use CuTe Shape for CUTLASS 3.x (same as dense nvfp4_gemm.cu)
-using TileShape    = cute::Shape<cute::_128, cute::_128, cute::_256>;  // K tile larger for sparse
-using ClusterShape = cute::Shape<cute::_1, cute::_1, cute::_1>;
+// Use cute::Shape with compile-time integers for CUTLASS 3.x
+using TileShape    = cute::Shape<cute::Int<128>, cute::Int<128>, cute::Int<256>>;  // K tile larger for sparse
+using ClusterShape = cute::Shape<cute::Int<1>, cute::Int<1>, cute::Int<1>>;
 
 using CollectiveEpilogue = typename cutlass::epilogue::collective::CollectiveBuilder<
     ArchTag, OpClass,

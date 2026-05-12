@@ -44,8 +44,9 @@ using ArchTag   = cutlass::arch::Sm120;
 using OpClass   = cutlass::arch::OpClassBlockScaledTensorOp;
 
 // Matches cooperative kernel in bench_01.
-using TileShape    = cute::Shape<cute::_128, cute::_128, cute::_128>;
-using ClusterShape = cute::Shape<cute::_1, cute::_1, cute::_1>;
+// Use cute::Shape with compile-time integers for CUTLASS 3.x
+using TileShape    = cute::Shape<cute::Int<128>, cute::Int<128>, cute::Int<128>>;
+using ClusterShape = cute::Shape<cute::Int<1>, cute::Int<1>, cute::Int<1>>;
 
 using CollectiveEpilogue = typename cutlass::epilogue::collective::CollectiveBuilder<
     ArchTag, OpClass,
