@@ -19,14 +19,24 @@ export HF_HOME=/data/home/scxj523/.cache/huggingface/
 export HF_DATASETS_OFFLINE="1"
 export TRANSFORMERS_OFFLINE="1"
 
+# When KERNEL=1, the kernel modules JIT-compile via CUTLASS_ROOT (same convention
+# as cutlass_5090_my/test/common.sh). Set to your CUTLASS source tree.
+export CUTLASS_ROOT="${CUTLASS_ROOT:-/data/home/scxj523/run/wja/cutlass}"
+
 cd /data/home/scxj523/run/wja/project/my/fake/
 
 MODEL="${MODEL:-maxvit}"
 MAXVIT_VARIANT="${MAXVIT_VARIANT:-tiny}"
 METHOD="${METHOD:-nvfp4}"
+# KERNEL=1 → load CUTLASS kernels (needs CUTLASS_ROOT). KERNEL=0 → dequant fallback.
+KERNEL_FLAG=""
+if [[ "${KERNEL:-0}" == "1" ]]; then
+  KERNEL_FLAG="--kernel"
+fi
 
 if [[ "${MODEL}" == "maxvit" ]]; then
   CHECKPOINT="${CHECKPOINT:-artifacts/checkpoints/maxvit_${MAXVIT_VARIANT}/${METHOD}/model.pt}"
+  MASKS="${MASKS:-artifacts/checkpoints/maxvit_${MAXVIT_VARIANT}/${METHOD}/masks.pt}"
   if [[ "${MAXVIT_VARIANT}" == "large" ]]; then
     DEFAULT_BATCH_SIZE=16
   else
@@ -38,12 +48,17 @@ if [[ "${MODEL}" == "maxvit" ]]; then
     --batch-size "${BATCH_SIZE}" \
     --checkpoint "${CHECKPOINT}" \
     --method "${METHOD}" \
+    --masks "${MASKS}" \
+    ${KERNEL_FLAG} \
     --output "artifacts/results/maxvit_${MAXVIT_VARIANT}_compressed/speed.csv"
 elif [[ "${MODEL}" == "dinov3_vit7b16" ]]; then
   CHECKPOINT="${CHECKPOINT:-artifacts/checkpoints/${MODEL}/${METHOD}/model.pt}"
+  MASKS="${MASKS:-artifacts/checkpoints/${MODEL}/${METHOD}/masks.pt}"
   PYTHONPATH=. python scripts/bench_dinov3_vit7b16_dense_speed.py \
     --checkpoint "${CHECKPOINT}" \
     --method "${METHOD}" \
+    --masks "${MASKS}" \
+    ${KERNEL_FLAG} \
     --output "artifacts/results/dinov3_vit7b16_compressed/speed.csv"
 else
   echo "Unsupported MODEL=${MODEL}" >&2

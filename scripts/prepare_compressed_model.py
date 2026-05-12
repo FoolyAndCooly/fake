@@ -78,6 +78,10 @@ def main() -> None:
         pin_memory=True,
         persistent_workers=args.num_workers > 0,
     )
+    # Kernel path (SemiSparseLinear / NVFP4SemiSparseLinear) requires full masks
+    # for materialize_from_checkpoint to reconstruct the 2:4 sparsity pattern.
+    # For non-sparse methods, save_full_masks remains user-controlled.
+    save_full_masks = args.save_full_masks or args.method in {"semi_structured_sparse", "nvfp4_semi_structured_sparse"}
     config = CompressionConfig(
         model_name=args.model,
         method=args.method,
@@ -86,7 +90,7 @@ def main() -> None:
         nvfp4_group_size=group_size,
         nvfp4_scale_precision=args.nvfp4_scale_precision,
         nvfp4_scale_remap=args.nvfp4_scale_remap,
-        save_full_masks=args.save_full_masks,
+        save_full_masks=save_full_masks,
         save_full_scales=args.save_full_scales,
     )
     metadata, masks, scales = compress_model(

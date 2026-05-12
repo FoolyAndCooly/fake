@@ -28,6 +28,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", default="artifacts/results/dinov3_vit7b16_dense/speed.csv")
     parser.add_argument("--checkpoint", default=None)
     parser.add_argument("--method", default="dense")
+    parser.add_argument("--kernel", action="store_true", help="Materialize kernel modules after loading checkpoint")
+    parser.add_argument("--masks", default=None, help="Path to masks.pt (required for sparse kernel methods)")
     return parser.parse_args()
 
 
@@ -39,6 +41,9 @@ def main() -> None:
     device = torch.device("cuda")
     model, config = load_dinov3_vit7b16_dense_classifier(args.backbone_path, args.head_path, device=device)
     checkpoint_metadata = load_checkpoint_into_model(model, args.checkpoint)
+    if args.kernel:
+        from fake.compression.checkpoint import materialize_from_checkpoint
+        model = materialize_from_checkpoint(model, checkpoint_metadata, args.masks)
     input_dtype = model_input_dtype(model)
     result = benchmark_forward(
         model=model,
