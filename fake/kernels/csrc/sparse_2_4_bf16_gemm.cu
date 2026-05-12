@@ -197,11 +197,12 @@ std::tuple<torch::Tensor, torch::Tensor> compress_2_4_bf16(torch::Tensor dense_w
     }
 
     // Step 2: reorder metadata into the layout consumed by the SparseGemm kernel.
-    // reorder_meta expects problem_size as {M, N, K} where M=rows, N=cols of metadata tensor
+    // reorder_meta expects TensorRef arguments and GemmCoord problem size
+    cutlass::gemm::GemmCoord meta_problem_size(n, k / kSparse / kElementsPerElementE, 1);
     cutlass::reorder_meta<InstructionShape::kK, kSparse, kMetaSizeInBits>(
         meta_reordered_h.host_ref(),
         meta_h.host_ref(),
-        {n, k / kSparse / kElementsPerElementE, 1}
+        meta_problem_size
     );
 
     // Step 3: copy results back to GPU tensors.

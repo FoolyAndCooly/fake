@@ -36,7 +36,9 @@ constexpr int AlignmentB = 32;
 constexpr int AlignmentD = 8;
 
 using ArchTag = cutlass::arch::Sm120;
-using OpClass = cutlass::arch::OpClassBlockScaledSparseTensorOp;
+// Note: CUTLASS 3.x CollectiveBuilder does not support OpClassBlockScaledSparseTensorOp
+// We use OpClassBlockScaledTensorOp and handle sparsity through the mainloop configuration
+using OpClass = cutlass::arch::OpClassBlockScaledTensorOp;
 
 // Use cute::Shape with compile-time integers for CUTLASS 3.x
 using TileShape    = cute::Shape<cute::Int<128>, cute::Int<128>, cute::Int<256>>;  // K tile larger for sparse
