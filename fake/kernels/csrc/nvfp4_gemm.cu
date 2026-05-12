@@ -26,11 +26,16 @@
 #include "cutlass/util/packed_stride.hpp"
 
 // NVFP4 data types: e2m1 for the FP4 data itself, ue4m3 scales passed separately
-using ElementA           = cutlass::nv_float4_t<cutlass::float_e2m1_t>;
-using ElementB           = cutlass::nv_float4_t<cutlass::float_e2m1_t>;
+using ElementA           = cutlass::float_e2m1_t;
+using ElementB           = cutlass::float_e2m1_t;
 using ElementC           = void;
 using ElementD           = cutlass::bfloat16_t;
 using ElementAccumulator = float;
+using ElementSF          = cutlass::float_ue4m3_t;
+
+// For block-scaled GEMM, use cute::tuple to combine data type and scale factor type
+using MmaTypePairA = cute::tuple<ElementA, ElementSF>;
+using MmaTypePairB = cute::tuple<ElementB, ElementSF>;
 
 using LayoutA = cutlass::layout::RowMajor;
 using LayoutB = cutlass::layout::ColumnMajor;
@@ -58,10 +63,11 @@ using CollectiveEpilogue = typename cutlass::epilogue::collective::CollectiveBui
     cutlass::epilogue::collective::EpilogueScheduleAuto
 >::CollectiveOp;
 
+// For block-scaled GEMM, pass MmaTypePair instead of raw element types
 using CollectiveMainloop = typename cutlass::gemm::collective::CollectiveBuilder<
     ArchTag, OpClass,
-    ElementA, LayoutA, AlignmentA,
-    ElementB, LayoutB, AlignmentB,
+    MmaTypePairA, LayoutA, AlignmentA,
+    MmaTypePairB, LayoutB, AlignmentB,
     ElementAccumulator,
     TileShape, ClusterShape,
     cutlass::gemm::collective::StageCountAutoCarveout<
@@ -106,6 +112,12 @@ torch::Tensor nvfp4_gemm(
     auto stride_b = cutlass::make_cute_packed_stride(StrideB{}, cute::make_shape(int(n), int(k), int(1)));
     auto stride_d = cutlass::make_cute_packed_stride(StrideD{}, cute::make_shape(int(m), int(n), int(1)));
 
+    // For block-scaled GEMM, we need to compute the layout for scale factors
+    // Scale factors are per-group (K/16), so we create a simple row-major layout
+    // A_scales: (M, K/16), B_scales: (N, K/16)
+    auto layout_sfa = cute::make_layout(cute::make_shape(int(m), int(k/16)), cute::make_stride(int(k/16), cute::Int<1>{}));
+    auto layout_sfb = cute::make_layout(cute::make_shape(int(n), int(k/16)), cute::make_stride(int(k/16), cute::Int<1>{}));
+
     typename Gemm::Arguments args{
         cutlass::gemm::GemmUniversalMode::kGemm,
         {int(m), int(n), int(k), 1},
@@ -114,8 +126,10 @@ torch::Tensor nvfp4_gemm(
             stride_a,
             reinterpret_cast<ElementB const*>(b_packed.data_ptr<uint8_t>()),
             stride_b,
-            reinterpret_cast<cutlass::float_ue4m3_t const*>(a_scales.data_ptr<uint8_t>()),
-            reinterpret_cast<cutlass::float_ue4m3_t const*>(b_scales.data_ptr<uint8_t>()),
+            reinterpret_cast<ElementSF const*>(a_scales.data_ptr<uint8_t>()),
+            layout_sfa,
+            reinterpret_cast<ElementSF const*>(b_scales.data_ptr<uint8_t>()),
+            layout_sfb,
         },
         {
             { static_cast<float>(alpha), 0.f },
