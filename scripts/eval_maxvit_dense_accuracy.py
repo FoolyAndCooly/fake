@@ -28,6 +28,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", default=None)
     parser.add_argument("--checkpoint", default=None)
     parser.add_argument("--method", default="dense")
+    parser.add_argument("--kernel", action="store_true", help="Materialize kernel modules after loading checkpoint")
+    parser.add_argument("--masks", default=None, help="Path to masks.pt (required for sparse kernel methods)")
     return parser.parse_args()
 
 
@@ -41,6 +43,9 @@ def main() -> None:
     output = args.output or f"artifacts/results/{variant_info.result_key}_dense/accuracy.csv"
     model, config = load_maxvit_dense(args.model_path, dtype=args.dtype, device=device, variant=args.variant)
     checkpoint_metadata = load_checkpoint_into_model(model, args.checkpoint)
+    if args.kernel:
+        from fake.compression.checkpoint import materialize_from_checkpoint
+        model = materialize_from_checkpoint(model, checkpoint_metadata, args.masks)
     input_dtype = model_input_dtype(model)
     dataset = ImageNetZipDataset(args.dataset_root, args.csv, args.zip, config)
     dataloader = DataLoader(
